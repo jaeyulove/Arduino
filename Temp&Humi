@@ -1,0 +1,48 @@
+import serial
+import requests
+
+ser = serial.Serial('COM3', 9600)  
+
+slack_webhook_url = 'https://hooks.slack.com/webhook-url-hereJ'
+
+def send_to_slack(message):
+    payload = {
+        'text': message
+    }
+    try:
+        response = requests.post(slack_webhook_url, json=payload)
+        response.raise_for_status()
+        print("Message sent to Slack successfully.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending message to Slack: {e}")
+        if response is not None:
+            print(f"Response content: {response.content}")
+
+def read_and_send():
+    temperature = None
+    humidity = None
+
+    while True:
+        if ser.in_waiting > 0:
+            line = ser.readline().decode('utf-8', errors='ignore').rstrip()
+            print(line)
+
+            if "온도" in line:
+                try:
+                    temperature = float(line.split(":")[1].strip())
+                except ValueError:
+                    print("Failed to parse temperature")
+
+            if "습도" in line:
+                try:
+                    humidity = float(line.split(":")[1].strip())
+                except ValueError:
+                    print("Failed to parse humidity")
+
+            if temperature is not None and humidity is not None:
+                message = f"온도: {temperature} °C\n습도: {humidity} %"
+                print("Sending to Slack:", message)
+                send_to_slack(message)
+                break
+
+read_and_send()
